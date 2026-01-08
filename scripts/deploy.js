@@ -1,36 +1,41 @@
-const fs = require('fs');
+const { ethers } = require("hardhat");
 
 async function main() {
+  // 1. Get deployer signer (CORRECT)
   const [deployer] = await ethers.getSigners();
-  console.log('Deploying with:', deployer.address);
 
-  const Token = await ethers.getContractFactory('Token');
-  const MAX_SUPPLY = ethers.utils.parseUnits('1000000', 18);
-  const token = await Token.deploy('FaucetToken', 'FTK', MAX_SUPPLY);
-  await token.deployed();
-  console.log('Token deployed to:', token.address);
+  console.log("Deploying contracts with account:", deployer.address);
 
-  const Faucet = await ethers.getContractFactory('TokenFaucet');
-  const faucet = await Faucet.deploy(token.address);
-  await faucet.deployed();
-  console.log('Faucet deployed to:', faucet.address);
+  // 2. Deploy Token
+  const Token = await ethers.getContractFactory("Token");
+  const token = await Token.deploy(
+    "Faucet Token",
+    "FCT",
+    ethers.parseEther("1000000")
+  );
+  await token.waitForDeployment();
 
-  // grant minter
-  const tx = await token.setMinter(faucet.address);
+  const tokenAddress = await token.getAddress();
+  console.log("Token deployed to:", tokenAddress);
+
+  // 3. Deploy Faucet
+  const TokenFaucet = await ethers.getContractFactory("TokenFaucet");
+  const faucet = await TokenFaucet.deploy(tokenAddress);
+  await faucet.waitForDeployment();
+
+  const faucetAddress = await faucet.getAddress();
+  console.log("Faucet deployed to:", faucetAddress);
+
+  // 4. Set faucet as minter
+  const tx = await token.setMinter(faucetAddress);
   await tx.wait();
 
-  const deployments = {
-    token: token.address,
-    faucet: faucet.address,
-    deployer: deployer.address,
-    network: (await ethers.provider.getNetwork()).name,
-  };
-
-  fs.writeFileSync('deployments.json', JSON.stringify(deployments, null, 2));
-  console.log('Wrote deployments.json');
+  console.log("Faucet set as token minter");
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

@@ -1,8 +1,21 @@
-import { ethers } from 'ethers'
+import { ethers } from "ethers";
 
-export const TOKEN_ADDRESS = process.env.VITE_TOKEN_ADDRESS || "0x472E5b6BD51870843F4b6bf9eeb551C523eB3590";
-export const FAUCET_ADDRESS = process.env.VITE_FAUCET_ADDRESS || "0x48C665980a9130b3F6bF70C1D2eBdfF12BbE0780";
+/**
+ * Vite-safe environment variables
+ */
+const RPC_URL =
+  import.meta.env.VITE_RPC_URL ||
+  "https://sepolia.infura.io/v3/1699da5a063f49af9734cbca14ce8645";
 
+export const TOKEN_ADDRESS =
+  "0x1C8Fa14a5F4439E2E25e5eD0794178f0a883CC1a";
+
+export const FAUCET_ADDRESS =
+  "0xa22899c9261eB4b49877Fa3513A069D44494912f";
+
+/**
+ * ABIs
+ */
 export const TOKEN_ABI = [
   "function balanceOf(address) view returns (uint256)",
   "function decimals() view returns (uint8)",
@@ -10,7 +23,7 @@ export const TOKEN_ABI = [
 ];
 
 export const FAUCET_ABI = [
-  "function requestTokens() external",
+  "function requestTokens()",
   "function canClaim(address) view returns (bool)",
   "function remainingAllowance(address) view returns (uint256)",
   "function isPaused() view returns (bool)",
@@ -18,76 +31,142 @@ export const FAUCET_ABI = [
   "function totalClaimed(address) view returns (uint256)",
 ];
 
+/**
+ * Provider helper — ETHERS v5
+ */
 function getProvider() {
-  if (typeof window !== 'undefined' && window.ethereum) {
-    return new ethers.providers.Web3Provider(window.ethereum)
+  // MetaMask / injected wallet
+  if (typeof window !== "undefined" && window.ethereum) {
+    return new ethers.providers.Web3Provider(window.ethereum);
   }
-  const rpc = process.env.VITE_RPC_URL || import.meta.env.VITE_RPC_URL
-  if (!rpc) throw new Error('No RPC available: set VITE_RPC_URL or use a wallet')
-  return new ethers.providers.JsonRpcProvider(rpc)
+
+  // Fallback RPC provider
+  if (!RPC_URL) {
+    throw new Error("No RPC available. Set VITE_RPC_URL.");
+  }
+
+  return new ethers.providers.JsonRpcProvider(RPC_URL);
 }
 
+/**
+ * Wallet connection (EIP-1193)
+ */
 export async function connectWallet() {
-  if (!window.ethereum) throw new Error("No injected wallet found (window.ethereum)");
-  try {
-    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-    if (!accounts || accounts.length === 0) throw new Error("No accounts returned from wallet");
-    return accounts[0];
-  } catch (err) {
-    throw new Error("Wallet connection failed: " + (err.message || err));
+  if (!window.ethereum) {
+    throw new Error("No injected wallet found (window.ethereum)");
   }
+
+  const accounts = await window.ethereum.request({
+    method: "eth_requestAccounts",
+  });
+
+  if (!accounts || accounts.length === 0) {
+    throw new Error("No accounts returned from wallet");
+  }
+
+  return accounts[0];
 }
 
+/**
+ * Request tokens from faucet
+ */
 export async function requestTokens() {
-  if (!window.ethereum) throw new Error("No injected wallet found (window.ethereum)");
+  if (!window.ethereum) {
+    throw new Error("No injected wallet found (window.ethereum)");
+  }
+
   try {
     const provider = getProvider();
-    const signer = await provider.getSigner();
-    const faucet = new ethers.Contract(FAUCET_ADDRESS, FAUCET_ABI, signer);
+    const signer = provider.getSigner();
+    const faucet = new ethers.Contract(
+      FAUCET_ADDRESS,
+      FAUCET_ABI,
+      signer
+    );
+
     const tx = await faucet.requestTokens();
     const receipt = await tx.wait();
-    return receipt.transactionHash || tx.hash || "";
+
+    return receipt.transactionHash;
   } catch (err) {
-    const msg = err?.reason || err?.message || String(err);
-    throw new Error("requestTokens failed: " + msg);
+    throw new Error(
+      "requestTokens failed: " +
+        (err?.reason || err?.message || String(err))
+    );
   }
 }
 
+/**
+ * Token balance
+ */
 export async function getBalance(address) {
   try {
     const provider = getProvider();
-    const token = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, provider);
+    const token = new ethers.Contract(
+      TOKEN_ADDRESS,
+      TOKEN_ABI,
+      provider
+    );
+
     const bal = await token.balanceOf(address);
     return bal.toString();
   } catch (err) {
-    throw new Error("getBalance failed: " + (err.message || err));
+    throw new Error(
+      "getBalance failed: " + (err?.message || err)
+    );
   }
 }
 
+/**
+ * Faucet eligibility
+ */
 export async function canClaim(address) {
   try {
     const provider = getProvider();
-    const faucet = new ethers.Contract(FAUCET_ADDRESS, FAUCET_ABI, provider);
-    const ok = await faucet.canClaim(address);
-    return Boolean(ok);
+    const faucet = new ethers.Contract(
+      FAUCET_ADDRESS,
+      FAUCET_ABI,
+      provider
+    );
+
+    return Boolean(await faucet.canClaim(address));
   } catch (err) {
-    throw new Error("canClaim failed: " + (err.message || err));
+    throw new Error(
+      "canClaim failed: " + (err?.message || err)
+    );
   }
 }
 
+/**
+ * Remaining lifetime allowance
+ */
 export async function getRemainingAllowance(address) {
   try {
     const provider = getProvider();
-    const faucet = new ethers.Contract(FAUCET_ADDRESS, FAUCET_ABI, provider);
-    const rem = await faucet.remainingAllowance(address);
-    return rem.toString();
+    const faucet = new ethers.Contract(
+      FAUCET_ADDRESS,
+      FAUCET_ABI,
+      provider
+    );
+
+    const remaining = await faucet.remainingAllowance(address);
+    return remaining.toString();
   } catch (err) {
-    throw new Error("getRemainingAllowance failed: " + (err.message || err));
+    throw new Error(
+      "getRemainingAllowance failed: " +
+        (err?.message || err)
+    );
   }
 }
 
+/**
+ * Evaluation helper (CRITICAL)
+ */
 export async function getContractAddresses() {
-  return { token: TOKEN_ADDRESS, faucet: FAUCET_ADDRESS };
+  return {
+    token: TOKEN_ADDRESS,
+    faucet: FAUCET_ADDRESS,
+  };
 }
 
 export default {
