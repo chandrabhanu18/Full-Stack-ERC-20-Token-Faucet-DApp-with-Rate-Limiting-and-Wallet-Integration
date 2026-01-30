@@ -4,7 +4,7 @@ FROM node:18-alpine AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install
 
 COPY . .
 RUN npm run build
@@ -16,7 +16,7 @@ WORKDIR /app
 
 # Copy package.json for dependencies
 COPY package.json package-lock.json ./
-RUN npm ci --only=production
+RUN npm install --only=production
 
 # Copy built frontend
 COPY --from=build /app/dist ./dist
