@@ -16,7 +16,7 @@ WORKDIR /app
 
 # Copy package.json for dependencies
 COPY package.json package-lock.json ./
-RUN npm install --only=production
+RUN npm install --omit=dev
 
 # Copy built frontend
 COPY --from=build /app/dist ./dist

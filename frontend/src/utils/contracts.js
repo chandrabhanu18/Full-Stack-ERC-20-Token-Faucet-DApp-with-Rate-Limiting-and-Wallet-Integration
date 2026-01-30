@@ -1,5 +1,3 @@
-import { ethers } from "ethers";
-
 /**
  * Vite-safe environment variables
  */
@@ -34,10 +32,22 @@ export const FAUCET_ABI = [
 ];
 
 /**
- * Provider helper — ETHERS v6
- * Always returns a provider, fallback to RPC if no wallet
+ * Lazy load ethers - import only when needed
  */
-function getProvider() {
+let ethersLib = null;
+async function getEthers() {
+  if (!ethersLib) {
+    ethersLib = await import("ethers");
+  }
+  return ethersLib;
+}
+
+/**
+ * Provider helper — ETHERS v6
+ */
+async function getProvider() {
+  const ethers = await getEthers();
+  
   // MetaMask / injected wallet
   if (typeof window !== "undefined" && window.ethereum) {
     try {
@@ -87,7 +97,8 @@ export async function requestTokens() {
   }
 
   try {
-    const provider = getProvider();
+    const ethers = await getEthers();
+    const provider = await getProvider();
     const signer = await provider.getSigner();
     const faucet = new ethers.Contract(
       FAUCET_ADDRESS,
@@ -112,7 +123,8 @@ export async function requestTokens() {
  */
 export async function getBalance(address) {
   try {
-    const provider = getProvider();
+    const ethers = await getEthers();
+    const provider = await getProvider();
     const token = new ethers.Contract(
       TOKEN_ADDRESS,
       TOKEN_ABI,
@@ -133,7 +145,8 @@ export async function getBalance(address) {
  */
 export async function canClaim(address) {
   try {
-    const provider = getProvider();
+    const ethers = await getEthers();
+    const provider = await getProvider();
     const faucet = new ethers.Contract(
       FAUCET_ADDRESS,
       FAUCET_ABI,
@@ -153,7 +166,8 @@ export async function canClaim(address) {
  */
 export async function getRemainingAllowance(address) {
   try {
-    const provider = getProvider();
+    const ethers = await getEthers();
+    const provider = await getProvider();
     const faucet = new ethers.Contract(
       FAUCET_ADDRESS,
       FAUCET_ABI,
