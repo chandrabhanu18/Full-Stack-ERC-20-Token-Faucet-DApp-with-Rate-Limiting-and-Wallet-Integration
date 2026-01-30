@@ -35,14 +35,19 @@ export const FAUCET_ABI = [
 
 /**
  * Provider helper — ETHERS v6
+ * Always returns a provider, fallback to RPC if no wallet
  */
 function getProvider() {
   // MetaMask / injected wallet
   if (typeof window !== "undefined" && window.ethereum) {
-    return new ethers.BrowserProvider(window.ethereum);
+    try {
+      return new ethers.BrowserProvider(window.ethereum);
+    } catch (err) {
+      console.warn("Failed to create BrowserProvider:", err);
+    }
   }
 
-  // Fallback RPC provider
+  // Fallback RPC provider (read-only)
   if (!RPC_URL) {
     throw new Error("No RPC available. Set VITE_RPC_URL.");
   }
@@ -58,15 +63,19 @@ export async function connectWallet() {
     throw new Error("No injected wallet found (window.ethereum)");
   }
 
-  const accounts = await window.ethereum.request({
-    method: "eth_requestAccounts",
-  });
+  try {
+    const accounts = await window.ethereum.request({
+      method: "eth_requestAccounts",
+    });
 
-  if (!accounts || accounts.length === 0) {
-    throw new Error("No accounts returned from wallet");
+    if (!accounts || accounts.length === 0) {
+      throw new Error("No accounts returned from wallet");
+    }
+
+    return accounts[0];
+  } catch (err) {
+    throw new Error("connectWallet failed: " + (err?.message || err));
   }
-
-  return accounts[0];
 }
 
 /**
