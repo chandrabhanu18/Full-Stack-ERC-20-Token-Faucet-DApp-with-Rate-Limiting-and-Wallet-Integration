@@ -8,9 +8,11 @@ const RPC_URL =
   "https://sepolia.infura.io/v3/1699da5a063f49af9734cbca14ce8645";
 
 export const TOKEN_ADDRESS =
+  import.meta.env.VITE_TOKEN_ADDRESS ||
   "0x1C8Fa14a5F4439E2E25e5eD0794178f0a883CC1a";
 
 export const FAUCET_ADDRESS =
+  import.meta.env.VITE_FAUCET_ADDRESS ||
   "0xa22899c9261eB4b49877Fa3513A069D44494912f";
 
 /**
@@ -32,12 +34,12 @@ export const FAUCET_ABI = [
 ];
 
 /**
- * Provider helper — ETHERS v5
+ * Provider helper — ETHERS v6
  */
 function getProvider() {
   // MetaMask / injected wallet
   if (typeof window !== "undefined" && window.ethereum) {
-    return new ethers.providers.Web3Provider(window.ethereum);
+    return new ethers.BrowserProvider(window.ethereum);
   }
 
   // Fallback RPC provider
@@ -45,7 +47,7 @@ function getProvider() {
     throw new Error("No RPC available. Set VITE_RPC_URL.");
   }
 
-  return new ethers.providers.JsonRpcProvider(RPC_URL);
+  return new ethers.JsonRpcProvider(RPC_URL);
 }
 
 /**
@@ -77,7 +79,7 @@ export async function requestTokens() {
 
   try {
     const provider = getProvider();
-    const signer = provider.getSigner();
+    const signer = await provider.getSigner();
     const faucet = new ethers.Contract(
       FAUCET_ADDRESS,
       FAUCET_ABI,
@@ -87,11 +89,11 @@ export async function requestTokens() {
     const tx = await faucet.requestTokens();
     const receipt = await tx.wait();
 
-    return receipt.transactionHash;
+    return receipt.hash;
   } catch (err) {
+    const reason = err?.reason || err?.data?.message || err?.message || String(err);
     throw new Error(
-      "requestTokens failed: " +
-        (err?.reason || err?.message || String(err))
+      "requestTokens failed: " + reason
     );
   }
 }

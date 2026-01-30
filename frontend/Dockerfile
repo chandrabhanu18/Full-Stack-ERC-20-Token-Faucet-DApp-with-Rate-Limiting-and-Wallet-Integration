@@ -9,14 +9,24 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# ---- Serve stage ----
-FROM nginx:alpine
+# ---- Runtime stage ----
+FROM node:18-alpine
 
-COPY --from=build /app/dist /usr/share/nginx/html
+WORKDIR /app
 
-# Health endpoint
-RUN echo "ok" > /usr/share/nginx/html/health
+# Copy package.json for dependencies
+COPY package.json package-lock.json ./
+RUN npm ci --only=production
+
+# Copy built frontend
+COPY --from=build /app/dist ./dist
+
+# Copy server file
+COPY server.js .
 
 EXPOSE 3000
 
-CMD ["nginx", "-g", "daemon off;"]
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+
+CMD ["node", "server.js"]
