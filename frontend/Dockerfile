@@ -3,6 +3,11 @@ FROM node:18-alpine AS build
 
 WORKDIR /app
 
+# Accept build arguments for Vite
+ARG VITE_RPC_URL
+ARG VITE_TOKEN_ADDRESS
+ARG VITE_FAUCET_ADDRESS
+
 COPY package.json package-lock.json ./
 RUN npm install
 

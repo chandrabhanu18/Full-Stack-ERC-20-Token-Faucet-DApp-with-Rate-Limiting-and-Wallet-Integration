@@ -4,6 +4,7 @@ import {
   getBalance,
   canClaim,
   getRemainingAllowance,
+  isPaused,
   getContractAddresses,
 } from './contracts'
 
@@ -13,7 +14,8 @@ window.__EVAL__ = {
   getBalance,
   canClaim,
   getRemainingAllowance,
+  isPaused,
   getContractAddresses,
 }
 
-export { connectWallet, requestTokens, getBalance, canClaim, getRemainingAllowance, getContractAddresses }
+export { connectWallet, requestTokens, getBalance, canClaim, getRemainingAllowance, isPaused, getContractAddresses }

@@ -185,6 +185,28 @@ export async function getRemainingAllowance(address) {
 }
 
 /**
+ * Check if faucet is paused
+ */
+export async function isPaused() {
+  try {
+    const ethers = await getEthers();
+    const provider = await getProvider();
+    const faucet = new ethers.Contract(
+      FAUCET_ADDRESS,
+      FAUCET_ABI,
+      provider
+    );
+
+    return await faucet.isPaused();
+  } catch (err) {
+    throw new Error(
+      "isPaused failed: " +
+        (err?.message || err)
+    );
+  }
+}
+
+/**
  * Evaluation helper (CRITICAL)
  */
 export async function getContractAddresses() {
@@ -200,5 +222,6 @@ export default {
   getBalance,
   canClaim,
   getRemainingAllowance,
+  isPaused,
   getContractAddresses,
 };
